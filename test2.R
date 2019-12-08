@@ -19,3 +19,10 @@ data$HgBand <- cut(HgFish$Hg, breaks=hg_hist$breaks, labels=hg_labels, include.l
 mat <- compute_tables(data, "LandUse", "HgBand")
 
 display_table(mat$P_r, "Conditional Hg given LandUse", "cond. likelihood")
+
+# Burt matrix analogue of variance-covariance matrix for discrete data.
+display_table(1/mat$n * mat$burt_mat, "Burt Matrix", "var. covar")
+
+
+
+

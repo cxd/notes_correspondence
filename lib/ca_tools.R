@@ -52,8 +52,11 @@ compute_tables <- function(data, col1name, col2name) {
   ## Total frequencies of Y matrix
   D_s <- 1/n * (t(Ymat) %*% Ymat)
   
-  ## UMV estimateion of $P_{ij}$ joint distribution of pairs of variables.
+  ## UMV estimateion of $\pi_{ij}$ joint distribution of pairs of variables.
   P_joint <- 1/n * two_way_table
+  
+  P_row_margins <- rowSums(P_joint)
+  P_col_margins <- colSums(P_joint)
   
   ## Conditional probability that an individual has property B_j given they have property A_i
   ## P_r <- D_r^{-1}P
@@ -64,6 +67,14 @@ compute_tables <- function(data, col1name, col2name) {
   P_s <- ginv(D_s)%*%t(P_joint)
   row.names(P_s) <- colnames(P_joint)
   
+  ## Burt matrix (r + s) x (r + s) 
+  ## The burt matrix divided by n is th analogue of the sample variance-covariance matrix
+  t1 <- rbind(n*D_r, t(two_way_table))
+  t2 <- rbind(two_way_table, n*D_s)
+  burt_mat <- cbind(t1,t2)
+  
+  ## TODO: compute distance matrices.
+  
   list(
     X=Xmat,
     Y=Ymat,
@@ -71,8 +82,11 @@ compute_tables <- function(data, col1name, col2name) {
     D_r=D_r,
     D_s=D_s,
     P_joint=P_joint,
+    P_row_margins=P_row_margins,
+    P_col_margins=P_col_margins,
     P_r=P_r,
-    P_s=P_s
+    P_s=P_s,
+    burt_mat=burt_mat
   )
 }
 
