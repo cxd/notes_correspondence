@@ -16,13 +16,20 @@ hg_labels <- make_break_labels("Hg", hg_hist$breaks)
 
 data$HgBand <- cut(HgFish$Hg, breaks=hg_hist$breaks, labels=hg_labels, include.lowest=TRUE)
 
-mat <- compute_tables(data, "LandUse", "HgBand")
+mat <- compute_correspondance_tables(data, "LandUse", "HgBand")
 
 display_table(mat$P_r, "Conditional Hg given LandUse", "cond. likelihood")
 
 # Burt matrix analogue of variance-covariance matrix for discrete data.
-display_table(1/mat$n * mat$burt_mat, "Burt Matrix", "var. covar")
+display_table(mat$var_covar_mat, "Burt Matrix", "var. covar")
 
+require(corrplot)
+corrplot(mat$var_covar_mat)
 
+# row marginal probabilities
+barplot(mat$P_row_margins)
+
+# column marginal probabilities
+barplot(mat$P_col_margins)
 
 

@@ -27,43 +27,48 @@ make_break_labels <- function(name, breaks, sep="x") {
 ## Joint P(A AND B)
 ## Conditional P_r = P(B given A)
 ## Condition P_s = P(A given B)
-compute_tables <- function(data, col1name, col2name) {
+compute_correspondance_tables <- function(data, col1name, col2name) {
   
   ## XMat is the matrix A_i counts
   form1 <- as.formula(paste0("~ ", col1name, " - 1"))
-  Xmat <- model.matrix(form1, data)
+  Amat <- model.matrix(form1, data)
   
   ## YMat is the matrix B_j counts
   form2 <- as.formula(paste0("~ ", col2name, " - 1"))
-  Ymat <- model.matrix(form2, data)
+  Bmat <- model.matrix(form2, data)
   
   
   ## We can build the 2 way contingency table of each class
   ## Rows A_i cols B_j
-  two_way_table <- t(as.matrix(Xmat)) %*% as.matrix(Ymat)
+  two_way_table <- t(as.matrix(Amat)) %*% as.matrix(Bmat)
   
   ## Estimates for frequencies
   
   n <- sum(two_way_table)
   
   ## Total frequencies of X matrix
-  D_r <- 1/n * (t(Xmat) %*% Xmat)
+  D_r <- 1/n * (t(Amat) %*% Amat)
   
   ## Total frequencies of Y matrix
-  D_s <- 1/n * (t(Ymat) %*% Ymat)
+  D_s <- 1/n * (t(Bmat) %*% Bmat)
   
   ## UMV estimateion of $\pi_{ij}$ joint distribution of pairs of variables.
+  ## This is also known as the correspondance matrix.
   P_joint <- 1/n * two_way_table
   
-  P_row_margins <- rowSums(P_joint)
-  P_col_margins <- colSums(P_joint)
+  # not that the row margians are also equal to the diagonal of D_r or rowSums(P_joint)
+  P_row_margins <- diag(D_r)
+  # the column margins are equal to the diagonal D_s or colSums(P_joint)
+  P_col_margins <- diag(D_s)
   
   ## Conditional probability that an individual has property B_j given they have property A_i
   ## P_r <- D_r^{-1}P
+  ## P_r is also known as the row profile.
   P_r <- ginv(D_r)%*%P_joint
   row.names(P_r) <- row.names(P_joint)
   
   ## Conditional probability of A_i given B_j
+  ## This is also known as the column profile.
   P_s <- ginv(D_s)%*%t(P_joint)
   row.names(P_s) <- colnames(P_joint)
   
@@ -73,20 +78,60 @@ compute_tables <- function(data, col1name, col2name) {
   t2 <- rbind(two_way_table, n*D_s)
   burt_mat <- cbind(t1,t2)
   
-  ## TODO: compute distance matrices.
+  ## Analogue of variance-covariance data utilising the burt matrix.
+  var_covar_mat <- 1/n * burt_mat
+  
+  
+  ## compute chisq distance matrices.
+  row_chisq_dist <- chisq_row_distances(P_r, D_s)
+  col_chisq_dist <- chisq_row_distances(P_s, D_r)
+  ## Compute center of mass chisq distances.
+  row_chisq_center <- chisq_row_center(P_r, diag(D_s), D_s)
+  col_chisq_center <- chisq_row_center(P_s, diag(D_r), D_r)
+  
+  ## Compute chisq statistic
+  row_chisq_stat <- n * sum(row_chisq_center)
+  col_chisq_stat <- n * sum(col_chisq_center)
+  
+  r <- nrow(mat$P_r)
+  s <- nrow(mat$P_s)
+  df <- (r-1)*(s-1)
+  # right tailed chisq statistic.
+  row_chisq_pvalue <- pchisq(row_chisq_stat, df, lower.tail=FALSE)
+  col_chisq_pvalue <- pchisq(col_chisq_stat, df, lower.tail=FALSE)
+  
+  r <- P_row_margins
+  c <- P_col_margins
+  ## Relative frequency matrix.
+  P_relative <- P_joint - r%*%t(c)
+  ## residuals where ijth entry is O_ij - E_ij.
+  N_residuals <- n * P_relative
+  
+  ## TODO: compute the R matrix and inertia measures.
   
   list(
-    X=Xmat,
-    Y=Ymat,
+    A=Amat,
+    B=Bmat,
     n=n,
     D_r=D_r,
     D_s=D_s,
     P_joint=P_joint,
+    P_relative=P_relative,
+    N_residuals=N_residuals,
     P_row_margins=P_row_margins,
     P_col_margins=P_col_margins,
     P_r=P_r,
     P_s=P_s,
-    burt_mat=burt_mat
+    burt_mat=burt_mat,
+    var_covar_mat=var_covar_mat,
+    row_chisq_dist=row_chisq_dist,
+    row_chisq_center=row_chisq_center,
+    row_chisq_stat=row_chisq_stat,
+    row_chisq_pvalue=row_chisq_pvalue,
+    col_chisq_dist=col_chisq_dist,
+    col_chisq_center=col_chisq_center,
+    col_chisq_stat=col_chisq_stat,
+    col_chisq_pvalue=col_chisq_pvalue
   )
 }
 
@@ -114,4 +159,42 @@ display_table <- function(mat, title,legend_title) {
       axis.title.y = element_blank()) + 
     ggtitle(title)
   
+}
+
+## Compute row distances
+## Paramters P - profile matrix with dimenstion r x c
+## D - diagonal matrix having dimension c x c
+chisq_row_distances <- function(P, D) {
+  # The distance matrix is r x r
+  M <- matrix(nrow=nrow(P), ncol=nrow(P))
+  # distance i,j = (a_i - a_j)^{T} D_c^{-1} (a_i - a_j)
+  D_i <- ginv(D)
+  for(i in 1:nrow(M)) {
+    for(j in 1:nrow(M)) {
+      a_i <- P[i,]
+      a_j <- P[j,]
+      delta <- a_i - a_j
+      d <- t(delta)%*%D_i%*%delta 
+      M[i,j] <- d
+    }
+  }
+  M
+}
+
+## Chisq distances from center of mass
+## This is a vector result where each entry is the chisq distance of the ith row from the center of mass.
+## P - profile matrix dimension r x c
+## c - center of mass dimension c
+## D - diagonal matrix having dimension c x c
+chisq_row_center <- function(P, c, D) {
+  # Distance matrix is r x r
+  M <- matrix(nrow=nrow(P), ncol=1) 
+  # distance i,j = (a_i - c)^{T} D_c^{-1} (a_i - c)
+  D_i <- ginv(D)
+  for(i in 1:nrow(M)) {
+    delta <- P[i,] - c
+    d <- t(delta)%*%D_i%*%delta
+    M[i,1] <- sum(d[1,1] * P[i,])
+  }
+  M
 }
