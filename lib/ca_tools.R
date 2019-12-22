@@ -1,4 +1,5 @@
 
+require(MASS)
 require(reshape2)
 require(ggplot2)
 
@@ -93,8 +94,8 @@ compute_correspondance_tables <- function(data, col1name, col2name) {
   row_chisq_stat <- n * sum(row_chisq_center)
   col_chisq_stat <- n * sum(col_chisq_center)
   
-  r <- nrow(mat$P_r)
-  s <- nrow(mat$P_s)
+  r <- nrow(P_r)
+  s <- nrow(P_s)
   df <- (r-1)*(s-1)
   # right tailed chisq statistic.
   row_chisq_pvalue <- pchisq(row_chisq_stat, df, lower.tail=FALSE)
@@ -107,7 +108,11 @@ compute_correspondance_tables <- function(data, col1name, col2name) {
   ## residuals where ijth entry is O_ij - E_ij.
   N_residuals <- n * P_relative
   
-  ## TODO: compute the R matrix and inertia measures.
+  ## compute the R matrix and inertia measures.
+  R_inertia <- calculate_r_matrix(D_s, D_r, P_relative) 
+  
+  ## Compute the principle and standard coordinates.
+  profile_coords <- profile_coordinates(D_s, D_r, P_relative)
   
   list(
     A=Amat,
@@ -131,7 +136,9 @@ compute_correspondance_tables <- function(data, col1name, col2name) {
     col_chisq_dist=col_chisq_dist,
     col_chisq_center=col_chisq_center,
     col_chisq_stat=col_chisq_stat,
-    col_chisq_pvalue=col_chisq_pvalue
+    col_chisq_pvalue=col_chisq_pvalue,
+    R_inertia=R_inertia,
+    profile_coords=profile_coords
   )
 }
 
@@ -197,4 +204,69 @@ chisq_row_center <- function(P, c, D) {
     M[i,1] <- sum(d[1,1] * P[i,])
   }
   M
+}
+
+## Calculate the R matrix the eigenvalues or directions of inertia for the data set.
+calculate_r_matrix <- function(Dc, Dr, P_hat) {
+  Dc_sinv <- matrix_root(Dc)
+  Dr_inv <- ginv(Dr)
+  R <- Dc_sinv%*%t(P_hat)%*%Dr_inv%*%P_hat%*%Dc_sinv
+  R_e <- eigen(R)
+  total_inertia <- sum(diag(R))
+  list(
+    R=R,
+    total_inertia=total_inertia,
+    R_eigen=R_e)
+} 
+
+"%^%" <- function(x, n) 
+	with(eigen(x), vectors %*% (values^n * t(vectors)))
+
+## Compute X^{-1/2}
+matrix_root <- function(X) {
+  E <- eigen(X)
+  V <- E$values
+  A <- E$vectors
+  idx <- which(V %in% 0)
+  if (length(idx) > 0) {
+    V[idx] <- V[idx]+0.0000000000000000000000001
+  }
+  Y <-A%*%diag(1/sqrt(V))%*%t(A)
+  Y
+}
+
+# Compute the profile coordinate matrices.
+## 17.2.7 Principle coordinates for row and column profiles.
+## From Modern Multivariate Statistical Techniques.
+profile_coordinates <- function(Dc, Dr, P_hat) {
+  Dc_sinv <- matrix_root(Dc)
+  Dr_sinv <- matrix_root(Dr)
+  M <- Dr_sinv%*%P_hat%*%Dc_sinv
+  M_svd <- svd(M)
+  A <- (Dr%^%(0.5))%*%M_svd$u
+  B <- (Dc%^%0.5)%*%M_svd$v
+  D_lambda <- matrix(0, nrow=length(M_svd$d), ncol=length(M_svd$d))
+  diag(D_lambda) <- M_svd$d
+  ## G^t_P and H^t_P are principle coordinates of row and column profiles.
+  Gt_p <- Dr_sinv%*%M_svd$u%*%D_lambda
+  Ht_p <- Dc_sinv%*%M_svd$v%*%D_lambda
+  G_p <- t(Gt_p)
+  H_p <- t(Ht_p)
+  ## G_S and H_S are standard coordinates of the row and column profiles.
+  G_s <- t(M_svd$u)%*%Dr_sinv
+  H_s <- t(M_svd$v)%*%Dc_sinv
+  ## Graphical display.
+  ## Row profiles G_P and H_S
+  ## Column profiles G_s and H_p
+  ## Both profiles G_p and H_p
+  list(
+    M=M,
+    M_svd=M_svd,
+    A=A,
+    B=B,
+    G_p_row_principle_coords=G_p,
+    H_p_col_principle_coords=H_p,
+    G_s_row_standard_coords=G_s,
+    H_s_col_standard_coords=H_s
+  )
 }
