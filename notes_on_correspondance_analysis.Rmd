@@ -56,7 +56,7 @@ knitr::kable(head(data[,c("LandUse", "HgBand")]))
 
 # Method 
 
-The method for obtaining the correspondence matrix and the associated chisq distances, as well as principle and standard coordinates is derived from chapter 17 of "Modern Multivariate Statistical Techniques" by Alan Izenman  @izenman.
+The method for obtaining the correspondence matrix and the associated chisq distances, as well as principle and standard coordinates is derived from chapter 17 of "Modern Multivariate Statistical Techniques" @izenman.
 
 The approach to performing the correspondence analysis converts each record into two matrices of one-hot encoded records for each factor $X$ for a factor representing rows, and $Y$ for a factor representing columns. For example a sample of the X matrix for Land Use.
 
