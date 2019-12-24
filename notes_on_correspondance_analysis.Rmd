@@ -1,5 +1,5 @@
 ---
-title: "Notes on Correspondance Analysis"
+title: "Notes on correspondence Analysis"
 author: "Chris Davey"
 date: "24/12/2019"
 output:
@@ -21,9 +21,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Overview
 
-Correspondance analysis can be a useful data exploration tool when investigating the relationship between two types of factors.
-Multiple correspondance analysis provides a similar capability for multiple sets of factors, however this note will only review correspondance analysis.
-These sets of scripts are for my own learning about correspondance analysis. For more robust and accurate tools, the R package FactorMineR should be leveraged for this type of analysis (http://factominer.free.fr).
+Correspondence analysis can be a useful data exploration tool when investigating the relationship between two types of factors.
+Multiple correspondence analysis provides a similar capability for multiple sets of factors, however this note will only review correspondence analysis.
+These sets of scripts are for my own learning about correspondence analysis. For more robust and accurate tools, the R package FactorMineR should be leveraged for this type of analysis (http://factominer.free.fr).
 
 ## Data Set.
 
@@ -56,9 +56,9 @@ knitr::kable(head(data[,c("LandUse", "HgBand")]))
 
 # Method 
 
-The method for obtaining the correspondance matrix and the associated chisq distances, as well as principle and standard coordinates is derived from chapter 17 of "Modern Multivariate Statistical Techniques" by Alan Izenman  @izenman.
+The method for obtaining the correspondence matrix and the associated chisq distances, as well as principle and standard coordinates is derived from chapter 17 of "Modern Multivariate Statistical Techniques" by Alan Izenman  @izenman.
 
-The approach to performing the correspondance analysis converts each record into two matrices of one-hot encoded records for each factor $X$ for a factor representing rows, and $Y$ for a factor representing columns. For example a sample of the X matrix for Land Use.
+The approach to performing the correspondence analysis converts each record into two matrices of one-hot encoded records for each factor $X$ for a factor representing rows, and $Y$ for a factor representing columns. For example a sample of the X matrix for Land Use.
 
 Note that the notation here differs slightly from that used in @izenman where the matrices $X$ and $Y$ have columns corresponding to the variable indicator whereas in the text, the matrices $X$ and $Y$ had rows corresponding to the variable indicator. Hence the matrices $X$ and $Y$ in this example are the transpose of the matrices in the text. The notation has been adjusted in further notes below.  
 
@@ -78,7 +78,7 @@ Having obtained two separate matrices of indicator variables for rows $X$ and co
 $$
 N = X'Y
 $$
-The matrix $N$ contains the frequency where the corresponding occurance of an indicator in $X$ occurs with an indicator in $Y$. In this data set it is the count of the frequency where a Land Use category in $X$ occurs in correspondance with a mercury level band from $Y$.
+The matrix $N$ contains the frequency where the corresponding occurance of an indicator in $X$ occurs with an indicator in $Y$. In this data set it is the count of the frequency where a Land Use category in $X$ occurs in correspondence with a mercury level band from $Y$.
 
 Also define the diagonal matrices
 
@@ -118,11 +118,11 @@ The matrices $P$, $P_r$ and $P_c$ are uniformly minimum variane unbiased estimat
 $Pr$ is known as the row profiles and $P_c$ the column profiles.
 
 
-In the example data set the set of matrices are calculated using the convenience method from the ca_tools.R script "compute_correspondance_tables". 
+In the example data set the set of matrices are calculated using the convenience method from the ca_tools.R script "compute_correspondence_tables". 
 
 ```{r}
 
-mat <- compute_correspondance_tables(data, "LandUse", "HgBand")
+mat <- compute_correspondence_tables(data, "LandUse", "HgBand")
 ```
 
 The joint density is shown below.
@@ -308,6 +308,6 @@ The mercury content bands 4.2-4.4 micrograms per gram $\mu g/g$,  1.4-1.6 Hg $\m
 
 ## Summary
 
-The correspondance analysis provides unbiased estimators for joint and conditional densities, and is able to test for independence of rows and columns. In addition the principle coordinates produced provide an ordination that can be useful in visualising correspondances between row and column categories and along with the measures of inertia can aid in the interpretation of the data.
+The correspondence analysis provides unbiased estimators for joint and conditional densities, and is able to test for independence of rows and columns. In addition the principle coordinates produced provide an ordination that can be useful in visualising correspondences between row and column categories and along with the measures of inertia can aid in the interpretation of the data.
 
 # References

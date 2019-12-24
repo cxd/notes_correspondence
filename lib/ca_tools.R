@@ -28,7 +28,7 @@ make_break_labels <- function(name, breaks, sep="x") {
 ## Joint P(A AND B)
 ## Conditional P_r = P(B given A)
 ## Condition P_s = P(A given B)
-compute_correspondance_tables <- function(data, col1name, col2name) {
+compute_correspondence_tables <- function(data, col1name, col2name) {
   
   ## XMat is the matrix A_i counts
   form1 <- as.formula(paste0("~ ", col1name, " - 1"))

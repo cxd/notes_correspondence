@@ -1,5 +1,5 @@
 
-mat <- compute_correspondance_tables(data, "LandUse", "HgBand")
+mat <- compute_correspondence_tables(data, "LandUse", "HgBand")
 
 display_table(mat$P_r, "Conditional Hg given LandUse", "cond. likelihood")
 
