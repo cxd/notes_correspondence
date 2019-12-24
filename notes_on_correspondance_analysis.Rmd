@@ -2,14 +2,16 @@
 title: "Notes on Correspondance Analysis"
 author: "Chris Davey"
 date: "24/12/2019"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 header-includes:
-  - \usepackage{amsmath}
-  - \usepackage{url}
-  - \usepackage{float}
-  - \usepackage{rotating}
-  - \usepackage[per-mode=symbol-or-fraction]{siunitx}
-  - \restylefloat{table}
+- \usepackage{amsmath}
+- \usepackage{url}
+- \usepackage{float}
+- \usepackage{rotating}
+- \usepackage[per-mode=symbol-or-fraction]{siunitx}
+- \restylefloat{table}
 bibliography: bibliography.bib
 ---
 
