@@ -1,6 +1,10 @@
-## Notes on Correspondance Analysis.
+## Notes on Correspondence Analysis.
 
 This repository contains a set of notes on correspondance analysis drawn from readings "Modern Multivariate Statistical Techniques" by Alan J. Izenman. The notebook provides a summary of the method, and an example applied to the HgFish data set from the NADA package.
+
+## Notebook
+
+PDF document [Notes on Correspondence Analysis](https://github.com/cxd/correspondance/blob/master/notes_on_correspondance_analysis.pdf).
 
 ## Overview
 
