@@ -9,8 +9,8 @@ PDF document [Notes on Correspondence Analysis](https://github.com/cxd/correspon
 ## Overview
 
 Correspondence analysis can be a useful data exploration tool when investigating the relationship between two types of factors.
-Multiple correspondence analysis provides a similar capability for multiple sets of factors, however this note will only review correspondance analysis.
-These sets of scripts are for my own learning about correspondance analysis. For more robust and accurate tools, the R package FactorMineR should be leveraged for this type of analysis (http://factominer.free.fr).
+Multiple correspondence analysis provides a similar capability for multiple sets of factors, however this note will only review correspondence analysis.
+These sets of scripts are for my own learning about correspondence analysis. For more robust and accurate tools, the R package FactorMineR should be leveraged for this type of analysis (http://factominer.free.fr).
 
 ## Data Set.
 
