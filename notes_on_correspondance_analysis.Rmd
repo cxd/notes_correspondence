@@ -1,0 +1,311 @@
+---
+title: "Notes on Correspondance Analysis"
+author: "Chris Davey"
+date: "24/12/2019"
+output: html_document
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{url}
+  - \usepackage{float}
+  - \usepackage{rotating}
+  - \usepackage[per-mode=symbol-or-fraction]{siunitx}
+  - \restylefloat{table}
+bibliography: bibliography.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview
+
+Correspondance analysis can be a useful data exploration tool when investigating the relationship between two types of factors.
+Multiple correspondance analysis provides a similar capability for multiple sets of factors, however this note will only review correspondance analysis.
+These sets of scripts are for my own learning about correspondance analysis. For more robust and accurate tools, the R package FactorMineR should be leveraged for this type of analysis (http://factominer.free.fr).
+
+## Data Set.
+
+The data set used for this exploration is from the package NADA, called HgFish, this provides the mercury concentration in fish accross the united states based on land use (see HgFish in the NADA package).
+The property Hg is converted into a factor variable given a set of 15 levels, this is a simplistic method of discretising the continuous measure for mercury, and is based on the histogram. 
+
+```{r, warning=FALSE, error=FALSE, message=FALSE}
+require(NADA)
+source("lib/ca_tools.R")
+
+data(HgFish)
+
+summary(HgFish)
+
+data <- HgFish
+
+## To be able to associate mercury levels we will generate 15 cuts.
+hg_hist <- hist(HgFish$Hg, breaks=15, plot=FALSE)
+
+hg_labels <- make_break_labels("Hg", hg_hist$breaks)
+
+data$HgBand <- cut(HgFish$Hg, breaks=hg_hist$breaks, labels=hg_labels, include.lowest=TRUE)
+```
+
+The resulting properties of interest will be the LandUse variable and the HgBand variable from the data set.
+
+```{r, warning=FALSE, error=FALSE, message=FALSE}
+knitr::kable(head(data[,c("LandUse", "HgBand")]))
+```
+
+# Method 
+
+The method for obtaining the correspondance matrix and the associated chisq distances, as well as principle and standard coordinates is derived from chapter 17 of "Modern Multivariate Statistical Techniques" by Alan Izenman  @izenman.
+
+The approach to performing the correspondance analysis converts each record into two matrices of one-hot encoded records for each factor $X$ for a factor representing rows, and $Y$ for a factor representing columns. For example a sample of the X matrix for Land Use.
+
+Note that the notation here differs slightly from that used in @izenman where the matrices $X$ and $Y$ have columns corresponding to the variable indicator whereas in the text, the matrices $X$ and $Y$ had rows corresponding to the variable indicator. Hence the matrices $X$ and $Y$ in this example are the transpose of the matrices in the text. The notation has been adjusted in further notes below.  
+
+```{r}
+X <- model.matrix(~ LandUse -1, data)
+knitr::kable(as.data.frame(X[5:15,]))
+```
+ and an example of the Y matrix for HgBand 
+
+```{r}
+Y <- model.matrix(~ HgBand -1, data)
+knitr::kable(as.data.frame(Y[5:15,]))
+```
+
+Having obtained two separate matrices of indicator variables for rows $X$ and columns $Y$ we can then calculate the joint frequencies resulting in the observed cell frequencies table. Since the rows of $X$ represent each observation we transpose $X$ to obtain an $r \times s$ matrix for the joint frequency matrix $N$.
+
+$$
+N = X'Y
+$$
+The matrix $N$ contains the frequency where the corresponding occurance of an indicator in $X$ occurs with an indicator in $Y$. In this data set it is the count of the frequency where a Land Use category in $X$ occurs in correspondance with a mercury level band from $Y$.
+
+Also define the diagonal matrices
+
+$$
+D_r = n^{-1}X'X
+$$
+$$
+D_c = n^{-1}Y'Y
+$$
+To represent the marginal frequencies of rows $D_r$ and columns $D_c$ respectively. Where $n$ is the sum of the frequency table (the total number of samples in all categories) $n = \sum_{i=1}^r \sum_{j=1}^s N_{ij}$.
+
+These matrices are combined to form the Burt matrix which is an analogue of the sample covariance matrix for the pair of discrete variables @izenman.
+
+$$
+\begin{pmatrix}
+  nD_r & N \\
+  N' & nD_c \\
+\end{pmatrix}
+$$
+
+The joint density estimate $P(A \land B)$ (where $A$ represents row variables and $B$ respresents column variables) can be derived from the frequency matrix $N$ simply by dividing through by $n$.
+$$
+P = n^{-1}N
+$$
+The marginal density estimates can be given by summing either rows or columns of $P$ or alternately, are given by the diagonals of $D_r$ and $D_c$ respectively.
+
+The conditional density estimates for row profiles given column profiles $P(A|B)$ the likelihood of row attribute occuring given the presence of the column attribute, $P_c$ are estimated as:
+$$
+P_c = D_c^{-1}P
+$$
+
+Similarly the conditional density estimates for column profiles given row profiles $P(B|A)$ the likelihood of a column attribute occuring given a row attribute occuring $P_r$ are given as
+$$
+P_r = D_r^{-1}P
+$$
+The matrices $P$, $P_r$ and $P_c$ are uniformly minimum variane unbiased estimators for their respective densities @izenman.
+$Pr$ is known as the row profiles and $P_c$ the column profiles.
+
+
+In the example data set the set of matrices are calculated using the convenience method from the ca_tools.R script "compute_correspondance_tables". 
+
+```{r}
+
+mat <- compute_correspondance_tables(data, "LandUse", "HgBand")
+```
+
+The joint density is shown below.
+
+```{r, fig.width=12, fit.height=8, warning=FALSE, message=FALSE}
+display_table(mat$P_joint, "Joint Density for LandUse and HgBand", "likelihood")
+
+```
+
+The conditional density estimate for HgBand given LandUse is shown below.
+
+```{r, fig.width=12, fig.height=12, warning=FALSE, message=FALSE}
+display_table(t(mat$P_r), "Conditional Hg given LandUse", "cond. likelihood")
+
+```
+
+The row and column margin densities are shown as follows.
+
+```{r}
+# row marginal probabilities
+barplot(mat$P_row_margins, main="Marginal Likelihood of Land Use")
+```
+
+The marginal likelihood $r$ is given by the diagonal of the matrix $D_r$, $r = diag(D_r)$ and likewise for the column marginal likelihood $c = diag(D_c)$.
+```{r}
+# column marginal probabilities
+barplot(mat$P_col_margins, main="Marginal likelihood of Mercury level in fish.")
+```
+
+The burt matrix divided by n gives approximation of the variance covariance matrix, shown below.
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=12}
+
+# Burt matrix analogue of variance-covariance matrix for discrete data.
+display_table(mat$var_covar_mat, "Approx VarCovar matrix", "var. covar")
+```
+
+## Testing Independence.
+
+A chisq test with $(r-1)(s-1)$ degrees of freedom, where $r$ represents the number of rows in the frequency matrix $N$ and $s$ the number of columns, can be used to test the hypothesis for independence between rows and columns.
+
+There are two distance matrices required for the calculation of the test statistic. 
+The first being the distance between $ith$ and $jth$ column profiles.
+$$
+d^2(a_i,a_j) = (a_i - a_j)'D_c^{-1}(a_i - a_j)
+$$
+and the distance from the row centroid $c$
+$$
+d^2(a_i, c) = (a_i - c)'D_c^{-1}(a_i - c)
+$$
+
+The first distance matrix provides larger distances for those rows that contribute more to the overall distance measure.
+
+The second matrix is used in calculation of the overall $\chi^2$ statistic for row profiles.
+$$
+\chi^2 = n \sum_{i=1}^r p_{i+}d^2(a_i,c)
+$$
+where $p_{i+}$ is the $ith$ row of $P_r$.
+The chisq statistic can be used to test whether there is any evidence to suggest that the rows are not independent.
+
+```{r}
+row_chisq_stat <- mat$row_chisq_stat
+df <- (nrow(mat$P_joint) - 1) * (ncol(mat$P_joint)-1)
+pchisq(row_chisq_stat, df=df, lower.tail=FALSE)
+```
+
+In this dataset the statistic suggests there is evidence to suggest the rows are not independent.
+
+The test pvalue is also already calculated in the result from the method.
+
+```{r}
+mat$row_chisq_pvalue
+```
+
+We can look to the distances between rows to determine which rows influence the statistic the most.
+
+```{r, warning=FALSE, message=FALSE}
+display_table(mat$row_chisq_dist, "Row Distances", "Chisq")
+```
+
+Seemingly row 1 is far from the other rows, and row 4 appears to be further from other rows as well.
+
+The same metrics can be calculated for the column distances for the $ith$ row $b_i$ and $jth$ row $b_j$ in the column profile matrix $P_c$.
+$$
+d^2(b_i, b_j) = (b_i - b_j)'D_r^{-1}(b_i - b_j)
+$$
+The distance from the centered column profiles $r$ is also given as
+$$
+d^2(b_i, r) = (b_i - r)'D_r^{-1}(b_i - r)
+$$
+The chisq statistic sums over each row $j$ in the column profile $P_c$ 
+$$
+\chi^2 = n \sum_{j=1} p_{+j} d^2(b_j, r)
+$$
+Where $p_{+j}$ is the $jth$ row of $P_c$ in this instance.
+
+The statistic produced can test the null hypothesis that the columns are independent at $(r-1)(s-1)$ degrees of freedom.
+
+```{r}
+mat$col_chisq_stat
+mat$col_chisq_pvalue
+```
+In this case there is some evidence to suggest that the columns are not independent of each other.
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=12}
+display_table(mat$col_chisq_dist, "Col Distances", "Chisq")
+
+```
+
+In this example we can see from the column distances that there are many columns further away from each other.
+
+## Inertia
+
+In computing the values for inertia we require the relative frequency matrix $\hat{P}$
+$$
+\hat{P} = P - rc'
+$$
+The matrix $\hat{N} = n\hat{P}$ is referred to as the matrix of residuals because the ${ijth}$ entry shows the difference between observed cell frequency and expected cell frequency @izenman. 
+The total inertia is calculated from the eigendecomposition of the $(s \times s)$ matrix $R_0$
+$$
+R_0 = D_c^{-1/2}\hat{P}'D_r^{-1}\hat{P}D_c^{-1/2}
+$$
+The trace of the matrix $R_0$ provides the measure of total inertia in the contingency table, which is also given by the sum of the eigenvalues of $R_0$. The eigenvalues of $R_0$ indicate the principle inertias contributed by each dimension of the decomposition, giving an analogue to the total amount of variance explained by principle component decomposition @izenman.
+
+```{r,echo=FALSE}
+total <- mat$R_inertia$total_inertia
+values <- mat$R_inertia$R_eigen$values
+pc <- values/total
+labels <- sapply(1:length(pc), function(i) paste0("Dim", i))
+barplot(pc, names.arg=labels, main="Percent of inertia explained per dimension")
+```
+The first three dimensions above indicate the largest contribution to the inertia of the contingency table, this also indicates that the first three dimensions contribute the most to the deviations from independence.
+
+## Coordinates for row and column profiles.
+
+The matrix $R_0$ is decomposed into $R_0 = M'M$ the matrix $M$ is calculated from 
+
+$$
+M = D_r^{-1/2}\hat{P}D_c^{-1/2}
+$$ 
+and the singular value decomposition of this matrix is used to calculate the principle components $M = UD_{\lambda}V'$.
+
+The matrices $A$ and $B$ further decompose the matrix $\hat{P}$ such that $\hat{P} = AD_{\lambda}B'$ these are given from the left and right eigenvalues as follows
+
+$$
+A = D_r^{1/2}U
+$$
+$$
+B = D_c^{1/2}V
+$$
+Where $A$ and $B$ are the left and right hand eigenvectors resulting from the singular value decomposition of $\hat{P}$. 
+The principle coordinates representing the squared $\chi^2$ distances between the centered row profiles and $B$ is given by
+$$
+G_p' = D_r^{-1}AD_{\lambda}
+$$
+and the principle coordinates representing the $\chi^2$ distances between the centered column profiles and $A$ is given by
+$$
+H_p = D_c^{-1}BD_{\lambda}
+$$
+The standard coordinates for row profiles are given by
+$$
+G_s = U'D_r^{-1/2}
+$$
+and likewise the standard coordinates for column profiles are given by
+$$
+H_s = V'D_c^{-1/2}
+$$
+These coordinates are used in visualisation as either __Symmetric Map__ where both the coordinates are taken from the principle coordinates, or as an __Asymmetric Map__ where either column or row coordinates are taken from the principle coordinates and the remaining (row or column) are taken from the standard coordinates @izenman.
+
+The allows for the ordination of the relationship between the row categories and the column categories, these are known as __correspondence maps__. Points that appear close to each other indicate that the categories are closely related. The interpretation is given by Izenman @izenman as
+
+- if row points are close, then those rows have similar conditional distributions accross columns
+- if column points are close, then those columns have similar conditional distributions accross rows
+- if a row point is close to a column point, then that configuration suggests a particular deviation from independence.
+
+The visualisation of the principle coordinates for the data in our example is shown below.
+
+```{r, warning=FALSE, message=FALSE, fig.width=12, fig.height=10}
+p <- draw_profiles(mat, "LandUse vs HgBand")
+print(p)
+```
+The mercury content bands 4.2-4.4 micrograms per gram $\mu g/g$,  1.4-1.6 Hg $\mu g/g$, 0.8-1 Hg $\mu g/g$, 0.4-0.6$\mu g/g$ and 1.8-2$\mu g/g$ appear to be related to mixed use Agriculture and Forest (AF). 0.6-0.8 Hg $\mu g/g$ appears to be between mixed use agriculture and forest (AF) and agriculture use (AG). Noteably 1-1.2 Hg $\mu g/g$ and 3.2-3.4 Hg $\mu g/g$ are closer to mining land use that the others. Low levels of mercury 0-0.2 Hg $\mu g/g$ appear to be closely related to land use Background (Bkg) and Urban (Urb). Note there is a broad cluster of data points close to the land use for Agriculture, these appear to be in the mid-ranges for mercury usage between 1.2 up to 4.2 Hg $\mu g/g$.
+
+## Summary
+
+The correspondance analysis provides unbiased estimators for joint and conditional densities, and is able to test for independence of rows and columns. In addition the principle coordinates produced provide an ordination that can be useful in visualising correspondances between row and column categories and along with the measures of inertia can aid in the interpretation of the data.
+
+# References

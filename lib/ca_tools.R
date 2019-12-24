@@ -1,7 +1,7 @@
-
 require(MASS)
 require(reshape2)
 require(ggplot2)
+require(ggrepel)
 
 
 ## Make a set of labels for the breaks derived from a histogram function.
@@ -269,4 +269,29 @@ profile_coordinates <- function(Dc, Dr, P_hat) {
     G_s_row_standard_coords=G_s,
     H_s_col_standard_coords=H_s
   )
+}
+
+## Draw profile using the matrix resulting from the output of compute correspondance tables.
+## supply a title.
+draw_profiles <- function(mat, title) {
+  G_p <- mat$profile_coords$G_p_row_principle_coords
+  H_p <- mat$profile_coords$H_p_col_principle_coords
+  temp1 <- data.frame(X=G_p[1,], Y=G_p[2,],
+                      Labels=rownames(mat$P_joint),
+                      type=rep("ROW", nrow(mat$P_joint)),
+                      margins=mat$P_row_margins)
+  temp2 <- data.frame(X=H_p[1,], Y=H_p[2,],
+                      Labels=colnames(mat$P_joint),
+                      type=rep("COL", ncol(mat$P_joint)),
+                      margins=mat$P_col_margins)
+  temp1 <- rbind(temp1,temp2)
+  
+  temp1$type <- as.factor(temp1$type)
+  
+  
+  ggplot(data=temp1, aes(x=X, y=Y, label=Labels, col=type)) +
+    geom_point() +
+    geom_text_repel(arrow=arrow(length=unit(0.02, "npc"), type="closed", ends="first")) + 
+    scale_color_discrete(name="type") +
+    ggtitle(title)
 }
